@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoxEcho | AI Dubbing</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; background-color: #f8fafc; color: #333; max-width: 800px; margin: 0 auto; padding: 2rem; }
+        .container { background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        h1 { color: #2563eb; text-align: center; margin-bottom: 5px; }
+        p.subtitle { text-align: center; color: #64748b; margin-bottom: 30px; }
+        .upload-section { margin-bottom: 2rem; padding: 2rem; border: 2px dashed #cbd5e1; border-radius: 8px; text-align: center; background-color: #f1f5f9; }
+        button { background-color: #2563eb; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; transition: background-color 0.2s; }
+        button:hover { background-color: #1d4ed8; }
+        button:disabled { background-color: #94a3b8; cursor: not-allowed; }
+        #status { margin-top: 20px; font-weight: bold; text-align: center; font-size: 1.1rem; }
+        .status-loading { color: #d97706; }
+        .status-success { color: #16a34a; }
+        .status-error { color: #dc2626; }
+        .result { margin-top: 30px; text-align: center; padding: 20px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; }
+        audio, video { width: 100%; margin-top: 15px; border-radius: 8px; }
+        .download-btn { background-color: #16a34a; margin-top: 20px; }
+        .download-btn:hover { background-color: #15803d; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎙️ VoxEcho AI</h1>
+    <p class="subtitle">Upload English media, get it dubbed in Spanish.</p>
+
+    <div class="upload-section">
+        <h2>🎵 Audio Dubbing</h2>
+        <input type="file" id="audioFile" accept="audio/*">
+        <br>
+        <button id="audioBtn" onclick="processFile('audioFile', '/upload/audio', 'audio')">Dub Audio</button>
+    </div>
+
+    <div class="upload-section">
+        <h2>🎬 Video Dubbing</h2>
+        <input type="file" id="videoFile" accept="video/mp4,video/x-m4v,video/*">
+        <br>
+        <button id="videoBtn" onclick="processFile('videoFile', '/upload/video', 'video')">Dub Video</button>
+    </div>
+
+    <div id="status"></div>
+    
+    <div id="resultContainer" class="result" style="display: none;">
+        <h2 style="color: #166534; margin-top: 0;">✨ AI Dubbing Complete!</h2>
+        <div id="mediaPlayer"></div>
+        <a id="downloadLink" href="#" download>
+            <button class="download-btn">⬇️ Download Result</button>
+        </a>
+    </div>
+</div>
+
+<script>
+    async function processFile(inputId, endpoint, type) {
+        const fileInput = document.getElementById(inputId);
+        const statusDiv = document.getElementById('status');
+        const resultContainer = document.getElementById('resultContainer');
+        const mediaPlayer = document.getElementById('mediaPlayer');
+        const downloadLink = document.getElementById('downloadLink');
+        const audioBtn = document.getElementById('audioBtn');
+        const videoBtn = document.getElementById('videoBtn');
+
+        if (fileInput.files.length === 0) {
+            alert('Please select a file first!');
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Lock UI and show loading
+        audioBtn.disabled = true;
+        videoBtn.disabled = true;
+        resultContainer.style.display = 'none';
+        statusDiv.className = 'status-loading';
+        statusDiv.innerHTML = "⚙️ AI is thinking... (This takes ~40 seconds locally). Please wait!";
+
+        try {
+            // Send to FastAPI backend
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) throw new Error('Server returned an error.');
+
+            // Get the file back and show it
+            const blob = await response.blob();
+            const fileUrl = URL.createObjectURL(blob);
+
+            statusDiv.className = 'status-success';
+            statusDiv.innerHTML = "✅ Success!";
+            resultContainer.style.display = 'block';
+            
+            downloadLink.href = fileUrl;
+            downloadLink.download = `dubbed_${file.name}`;
+
+            if (type === 'audio') {
+                mediaPlayer.innerHTML = `<audio controls src="${fileUrl}"></audio>`;
+            } else {
+                mediaPlayer.innerHTML = `<video controls src="${fileUrl}"></video>`;
+            }
+
+        } catch (error) {
+            statusDiv.className = 'status-error';
+            statusDiv.innerHTML = "❌ Error processing file. Check your terminal.";
+            console.error(error);
+        } finally {
+            // Unlock UI
+            audioBtn.disabled = false;
+            videoBtn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
